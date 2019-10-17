@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/jeffutter/jira-reset-failed-qa-tickets/cmd"
+import "github.com/jeffutter/jjc/cmd"
 
 func main() {
   cmd.Execute()

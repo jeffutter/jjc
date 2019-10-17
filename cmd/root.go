@@ -31,7 +31,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-  Use:   "jira-reset-failed-qa-tickets",
+  Use:   "jjc",
   Short: "A brief description of your application",
   Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
@@ -60,7 +60,7 @@ func init() {
   // Cobra supports persistent flags, which, if defined here,
   // will be global for your application.
 
-  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jira-reset-failed-qa-tickets.yaml)")
+  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jjc.yaml)")
 
 
   // Cobra also supports local flags, which will only run
@@ -82,9 +82,9 @@ func initConfig() {
       os.Exit(1)
     }
 
-    // Search config in home directory with name ".jira-reset-failed-qa-tickets" (without extension).
+    // Search config in home directory with name ".jjc" (without extension).
     viper.AddConfigPath(home)
-    viper.SetConfigName(".jira-reset-failed-qa-tickets")
+    viper.SetConfigName(".jjc")
   }
 
   viper.AutomaticEnv() // read in environment variables that match
