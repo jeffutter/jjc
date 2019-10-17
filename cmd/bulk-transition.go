@@ -21,10 +21,60 @@ import (
 	jira "gopkg.in/andygrunwald/go-jira.v1"
 	"os"
 	"strings"
+	"time"
 )
 
 var SourceStatus string
 var DestStatus string
+var Repeat bool
+
+func transitionIssue(issue jira.Issue, client *jira.Client) {
+	transitions, _, err := client.Issue.GetTransitions(issue.ID)
+	if err != nil {
+		panic(err)
+	}
+
+	transitioned := false
+
+	for ti := range transitions {
+		if transitions[ti].Name == DestStatus {
+			fmt.Printf("\nTransitioning: %s\n", issue.Key)
+
+			_, err := client.Issue.DoTransition(issue.ID, transitions[ti].ID)
+			if err != nil {
+				panic(err)
+			}
+
+			transitioned = true
+
+			fmt.Printf("\n%s Transitioned to %s\n", issue.Fields.Summary, DestStatus)
+			break
+		}
+	}
+
+	if transitioned == false {
+		possibleTransitions := make([]string, len(transitions))
+		for i, transition := range transitions {
+			possibleTransitions[i] = transition.Name
+		}
+		fmt.Printf("\n%s can't transition to status: %s. Available statuses: %s\n", issue.Key, DestStatus, strings.Join(possibleTransitions, ", "))
+	}
+}
+
+func bulkTransition(client *jira.Client) {
+	issues, _, err := client.Issue.Search(fmt.Sprintf("assignee=currentUser() and status=\"%s\"", SourceStatus), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(issues) == 0 {
+		fmt.Printf("\nThere are no issues in %s Status\n", SourceStatus)
+	}
+
+	for ii := range issues {
+		transitionIssue(issues[ii], client)
+	}
+}
 
 var bulkTransitionCmd = &cobra.Command{
 	Use:   "bulk-transition",
@@ -52,36 +102,13 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		issues, _, err := client.Issue.Search(fmt.Sprintf("assignee=currentUser() and status=\"%s\"", SourceStatus), nil)
-		if err != nil {
-			panic(err)
-		}
-
-		if len(issues) == 0 {
-			fmt.Printf("\nThere are no issues in %s Status\n", SourceStatus)
-		}
-
-		for ii := range issues {
-			issueID := issues[ii].ID
-
-			transitions, _, err := client.Issue.GetTransitions(issueID)
-			if err != nil {
-				panic(err)
+		if Repeat {
+			for true {
+				bulkTransition(client)
+				time.Sleep(time.Second * 60)
 			}
-
-			for ti := range transitions {
-				if transitions[ti].Name == DestStatus {
-					fmt.Printf("\nTransitioning: %s\n", issueID)
-
-					_, err := client.Issue.DoTransition(issueID, transitions[ti].ID)
-					if err != nil {
-						panic(err)
-					}
-
-					fmt.Printf("\n%s Transitioned to %s\n", issues[ii].Fields.Summary, DestStatus)
-				}
-				break
-			}
+		} else {
+			bulkTransition(client)
 		}
 	},
 }
@@ -91,6 +118,7 @@ func init() {
 
 	bulkTransitionCmd.Flags().StringVarP(&SourceStatus, "source", "s", "", "Source status to transition from")
 	bulkTransitionCmd.Flags().StringVarP(&DestStatus, "dest", "d", "", "Dest status to transition to")
+	bulkTransitionCmd.Flags().BoolVarP(&Repeat, "repeat", "r", false, "Repeat operation indefinitely")
 	bulkTransitionCmd.MarkFlagRequired("source")
 	bulkTransitionCmd.MarkFlagRequired("dest")
 }
